@@ -5,6 +5,9 @@ use std::sync::{Arc};
 // use std::io::{Error};
 
 use rayon::prelude::*;
+use proptest::prelude::*;
+
+use proptest::test_runner::Config;
 
 use traits::{Estimate, Zero, Sender, Data};
 use justification::{Justification, SenderState, LatestMsgs, LatestMsgsHonest};
@@ -59,8 +62,7 @@ pub trait CasperMsg: Hash + Ord + Clone + Eq + Sync + Send + Debug {
             justification.faulty_inserts(new_msgs, &sender_state);
         if !success {
             Err("None of the messages could be added to the state!")
-        }
-        else {
+        } else {
             let latest_msgs_honest = LatestMsgsHonest::from_latest_msgs(
                 sender_state.get_latest_msgs(),
                 sender_state.get_equivocators(),
@@ -85,8 +87,7 @@ pub trait CasperMsg: Hash + Ord + Clone + Eq + Sync + Send + Debug {
         let init = if is_equivocation {
             equivocators.insert(self.get_sender().clone());
             (true, equivocators)
-        }
-        else {
+        } else {
             (false, equivocators)
         };
         self.get_justification().iter().fold(
@@ -161,8 +162,7 @@ pub trait CasperMsg: Hash + Ord + Clone + Eq + Sync + Send + Debug {
                     {
                         let _ = safe_ms_prime.insert(m_prime.clone());
                         safe_ms_prime
-                    }
-                    else {
+                    } else {
                         let _ = senders_referred
                             .insert(m_prime.get_sender().clone());
                         recursor(
@@ -224,8 +224,7 @@ pub trait CasperMsg: Hash + Ord + Clone + Eq + Sync + Send + Debug {
                         let _ = safe_msg_weight_prime
                             .insert(m.clone(), weight_referred);
                         safe_msg_weight_prime
-                    }
-                    else {
+                    } else {
                         let sender_current = m_prime.get_sender();
                         let weight_referred = if senders_referred
                             .insert(sender_current.clone())
@@ -234,8 +233,7 @@ pub trait CasperMsg: Hash + Ord + Clone + Eq + Sync + Send + Debug {
                                 + senders_weights
                                     .get_weight(&sender_current)
                                     .unwrap_or(WeightUnit::ZERO)
-                        }
-                        else {
+                        } else {
                             weight_referred
                         };
 
@@ -288,9 +286,9 @@ where
 // documented
 
 enum MsgStatus {
-    Unchecked,
-    Valid,
-    Invalid,
+Unchecked,
+Valid,
+Invalid,
 }
 
 struct Message<E, S, D>
@@ -394,6 +392,27 @@ mod message {
 
     use std::{f64};
     use super::*;
+
+    prop_compose! {
+        fn votes(senders: usize)
+            (votes in prop::collection::vec(prop::bool::weighted(0.3), senders))
+             -> Vec<bool> {
+                votes
+            }
+    }
+
+    proptest! {
+        #![proptest_config(Config::with_cases(1))]
+        #[test]
+        fn gen_votes(ref votes in votes(5)) {
+            votes.iter()
+                .enumerate()
+                .for_each(|(sender, vote)|
+                          println!("{:?}",
+                                   VoteCount::create_vote_msg(sender as u32, vote.clone())))
+        }
+    }
+
     #[test]
     fn debug() {
         let v0 = VoteCount::create_vote_msg(0, false);
