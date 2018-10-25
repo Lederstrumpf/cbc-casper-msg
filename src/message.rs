@@ -406,8 +406,8 @@ mod message {
     ) -> &'z BTreeMap<u32, SenderState<Message<VoteCount, u32>>> {
         // println!("{:?} {:?}", sender, recipients);
         recipients.iter().for_each(|recipient| {
-            let message = state[&sender].clone();
-            state.insert(*recipient, message);
+            let (_, recipient_state) = Justification::from_msgs(vec![state[&sender].get_my_last_msg().clone().unwrap()], &state[recipient]);
+            state.insert(*recipient, recipient_state);
         });
         state
     }
@@ -421,7 +421,7 @@ mod message {
             prop::collection::hash_set(0..state.len() as u32, 0..state.len()),
             Just(state),
         ).prop_map(|(sender, receivers, mut state)| {
-                add_message(&mut state, sender as u32, receivers).clone()
+            add_message(&mut state, sender as u32, receivers).clone()
             })
             .boxed()
     }
@@ -448,12 +448,13 @@ mod message {
 
                 validators.iter().for_each(|validator| {
                     let mut j = Justification::new();
-                    j.insert(VoteCount::create_vote_msg(*validator, votes[*validator as usize]));
+                    let m = VoteCount::create_vote_msg(*validator, votes[*validator as usize]);
+                    j.insert(m.clone());
                     state.insert(*validator,
                                  SenderState::new(
                                      senders_weights.clone(),
                                      0.0,
-                                     None,
+                                     Some(m),
                                      LatestMsgs::from(&j),
                                      0.0,
                                      HashSet::new(),
@@ -493,9 +494,9 @@ mod message {
     }
 
     proptest! {
-        #![proptest_config(Config::with_cases(100))]
+        #![proptest_config(Config::with_cases(1))]
         #[test]
-        fn increment_chain(ref chain in chain(4)) {
+        fn increment_chain(ref chain in chain(40)) {
             // total messages until unilateral consensus
             println!("{} validators -> {:?} message(s)",
                      match chain.last().unwrap_or(&BTreeMap::new()).keys().len().to_string().as_ref()
