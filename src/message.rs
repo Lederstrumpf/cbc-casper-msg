@@ -405,16 +405,23 @@ mod message {
         recipients: HashSet<u32>,
     ) -> &'z BTreeMap<u32, SenderState<Message<VoteCount, u32>>> {
         // println!("{:?} {:?}", sender, recipients);
+        let latest_honest_msgs = LatestMsgsHonest::from_latest_msgs(
+            &state[&sender].get_latest_msgs(),
+            &HashSet::new(),
+        );
         let (justification, sender_state) = Justification::from_msgs(
-            LatestMsgsHonest::from_latest_msgs(
-                &state[&sender].get_latest_msgs(),
-                &HashSet::new(),
-            ).iter()
-                .cloned()
-                .collect(),
+            latest_honest_msgs.iter().cloned().collect(),
             &state[&sender],
         );
-        let m = Message::new(sender, justification, VoteCount::ZERO);
+        let m = Message::new(
+            sender,
+            justification,
+            latest_honest_msgs.mk_estimate(
+                None,
+                state[&sender].get_senders_weights(),
+                None,
+            ),
+        );
         let (_, sender_state) = Justification::from_msgs(
             LatestMsgsHonest::from_latest_msgs(
                 sender_state.get_latest_msgs(),
@@ -471,7 +478,6 @@ mod message {
 
     fn full_consensus(
         state: BTreeMap<u32, SenderState<Message<VoteCount, u32>>>,
-        senders_weights: &SendersWeight<u32>,
     ) -> bool {
         let m: HashSet<_> = state
             .iter()
@@ -480,7 +486,11 @@ mod message {
                     sender_state.get_latest_msgs(),
                     &HashSet::new(),
                 );
-                latest_honest_msgs.mk_estimate(None, senders_weights, None)
+                latest_honest_msgs.mk_estimate(
+                    None,
+                    sender_state.get_senders_weights(),
+                    None,
+                )
             })
             .collect();
         // println!("{:?}", m);
@@ -496,10 +506,7 @@ mod message {
     where
         F: Fn(&mut Vec<u32>) -> BoxedStrategy<u32>,
         G: Fn(&Vec<u32>) -> BoxedStrategy<HashSet<u32>>,
-        H: Fn(
-            BTreeMap<u32, SenderState<Message<VoteCount, u32>>>,
-            &SendersWeight<u32>,
-        ) -> bool,
+        H: Fn(BTreeMap<u32, SenderState<Message<VoteCount, u32>>>) -> bool,
     {
         (prop::sample::select((1..validator_max_count).collect::<Vec<usize>>()))
             .prop_flat_map(|validators| {
@@ -556,9 +563,11 @@ mod message {
                         .current();
                     state.clone()
                 });
-                Vec::from_iter(chain.take_while(|state| {
-                    !consensus_satisfied(state.clone(), &senders_weights)
-                }))
+                Vec::from_iter(
+                    chain.take_while(|state| {
+                        !consensus_satisfied(state.clone())
+                    }),
+                )
             })
             .boxed()
     }
