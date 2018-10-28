@@ -400,11 +400,12 @@ mod message {
     use std::{f64};
     use super::*;
 
-    fn add_message_vote_count<'z>(
-        state: &'z mut BTreeMap<u32, SenderState<Message<VoteCount, u32>>>,
-        sender: u32,
-        recipients: HashSet<u32>,
-    ) -> &'z BTreeMap<u32, SenderState<Message<VoteCount, u32>>> {
+    fn add_message<'z, M>(
+        state: &'z mut BTreeMap<M::Sender, SenderState<M>>,
+        sender: M::Sender,
+        recipients: HashSet<M::Sender>,
+    ) -> &'z BTreeMap<M::Sender, SenderState<M>>
+    where M: CasperMsg {
         // println!("{:?} {:?}", sender, recipients);
         let latest_honest_msgs = LatestMsgsHonest::from_latest_msgs(
             &state[&sender].get_latest_msgs(),
@@ -414,8 +415,8 @@ mod message {
             latest_honest_msgs.iter().cloned().collect(),
             &state[&sender],
         );
-        let m = Message::new(
-            sender,
+        let m = M::new(
+            sender.clone(),
             justification,
             latest_honest_msgs.mk_estimate(
                 None,
@@ -436,7 +437,7 @@ mod message {
         recipients.iter().for_each(|recipient| {
             let (_, recipient_state) =
                 Justification::from_msgs(vec![m.clone()], &state[recipient]);
-            state.insert(*recipient, recipient_state);
+            state.insert(recipient.clone(), recipient_state);
         });
         state
     }
@@ -513,7 +514,7 @@ mod message {
         (sender_strategy, receiver_strategy, Just(state))
             .prop_map(|(sender, receivers, mut state)| {
                 // let receivers = state.keys().cloned().collect();
-                add_message_vote_count(&mut state, sender, receivers).clone()
+                add_message(&mut state, sender, receivers).clone()
             })
             .boxed()
     }
@@ -526,7 +527,7 @@ mod message {
         (sender_strategy, receiver_strategy, Just(state))
             .prop_map(|(sender, receivers, mut state)| {
                 // let receivers = state.keys().cloned().collect();
-                add_message_binary(&mut state, sender, receivers).clone()
+                add_message(&mut state, sender, receivers).clone()
             })
             .boxed()
     }
