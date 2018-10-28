@@ -404,7 +404,9 @@ mod message {
         sender: M::Sender,
         recipients: HashSet<M::Sender>,
     ) -> &'z BTreeMap<M::Sender, SenderState<M>>
-    where M: CasperMsg {
+    where
+        M: CasperMsg,
+    {
         // println!("{:?} {:?}", sender, recipients);
         let latest_honest_msgs = LatestMsgsHonest::from_latest_msgs(
             &state[&sender].get_latest_msgs(),
@@ -468,7 +470,9 @@ mod message {
         sender_strategy: BoxedStrategy<M::Sender>,
         receiver_strategy: BoxedStrategy<HashSet<M::Sender>>,
     ) -> BoxedStrategy<BTreeMap<M::Sender, SenderState<M>>>
-    where M: CasperMsg {
+    where
+        M: CasperMsg,
+    {
         (sender_strategy, receiver_strategy, Just(state))
             .prop_map(|(sender, receivers, mut state)| {
                 // let receivers = state.keys().cloned().collect();
@@ -477,10 +481,10 @@ mod message {
             .boxed()
     }
 
-    fn full_consensus<M>(
-        state: BTreeMap<M::Sender, SenderState<M>>,
-    ) -> bool
-    where M:CasperMsg {
+    fn full_consensus<M>(state: BTreeMap<M::Sender, SenderState<M>>) -> bool
+    where
+        M: CasperMsg,
+    {
         let m: HashSet<_> = state
             .iter()
             .map(|(_, sender_state)| {
@@ -514,7 +518,10 @@ mod message {
     {
         (prop::sample::select((1..validator_max_count).collect::<Vec<usize>>()))
             .prop_flat_map(move |validators| {
-                (prop::collection::vec(consensus_value_strategy.clone(), validators))
+                (prop::collection::vec(
+                    consensus_value_strategy.clone(),
+                    validators,
+                ))
             })
             .prop_map(move |votes| {
                 let mut state = BTreeMap::new();
@@ -577,7 +584,7 @@ mod message {
             .boxed()
     }
 
-        proptest! {
+    proptest! {
         #![proptest_config(Config::with_cases(30))]
             #[test]
         fn increment_chain_round_robin_vote_count(ref chain in chain(prop::sample::select(vec![VoteCount::new(1,0), VoteCount::new(0,1)]).boxed(), 15, round_robin, all_receivers, full_consensus)) {
