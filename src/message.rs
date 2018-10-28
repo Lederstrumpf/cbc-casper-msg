@@ -394,6 +394,7 @@ where
 #[cfg(test)]
 mod message {
     use example::vote_count::{VoteCount};
+    use example::binary::BinaryMsg;
     use senders_weight::{SendersWeight};
 
     use std::{f64};
@@ -441,10 +442,10 @@ mod message {
     }
 
     fn add_message_binary<'z>(
-        state: &'z mut BTreeMap<u32, SenderState<Message<VoteCount, u32>>>,
+        state: &'z mut BTreeMap<u32, SenderState<Message<bool, u32>>>,
         sender: u32,
         recipients: HashSet<u32>,
-    ) -> &'z BTreeMap<u32, SenderState<Message<VoteCount, u32>>> {
+    ) -> &'z BTreeMap<u32, SenderState<Message<bool, u32>>> {
         // println!("{:?} {:?}", sender, recipients);
         let latest_honest_msgs = LatestMsgsHonest::from_latest_msgs(
             &state[&sender].get_latest_msgs(),
@@ -518,11 +519,10 @@ mod message {
     }
 
     fn message_event_binary(
-        state: BTreeMap<u32, SenderState<Message<VoteCount, u32>>>,
+        state: BTreeMap<u32, SenderState<Message<bool, u32>>>,
         sender_strategy: BoxedStrategy<u32>,
         receiver_strategy: BoxedStrategy<HashSet<u32>>,
-    ) -> BoxedStrategy<BTreeMap<u32, SenderState<Message<VoteCount, u32>>>>
-    {
+    ) -> BoxedStrategy<BTreeMap<u32, SenderState<Message<bool, u32>>>> {
         (sender_strategy, receiver_strategy, Just(state))
             .prop_map(|(sender, receivers, mut state)| {
                 // let receivers = state.keys().cloned().collect();
@@ -553,7 +553,7 @@ mod message {
     }
 
     fn full_consensus_binary(
-        state: BTreeMap<u32, SenderState<Message<VoteCount, u32>>>,
+        state: BTreeMap<u32, SenderState<Message<bool, u32>>>,
     ) -> bool {
         let m: HashSet<_> = state
             .iter()
@@ -653,11 +653,11 @@ mod message {
         message_producer_strategy: F,
         message_receiver_strategy: G,
         consensus_satisfied: H,
-    ) -> BoxedStrategy<Vec<BTreeMap<u32, SenderState<Message<VoteCount, u32>>>>>
+    ) -> BoxedStrategy<Vec<BTreeMap<u32, SenderState<Message<bool, u32>>>>>
     where
         F: Fn(&mut Vec<u32>) -> BoxedStrategy<u32>,
         G: Fn(&Vec<u32>) -> BoxedStrategy<HashSet<u32>>,
-        H: Fn(BTreeMap<u32, SenderState<Message<VoteCount, u32>>>) -> bool,
+        H: Fn(BTreeMap<u32, SenderState<Message<bool, u32>>>) -> bool,
     {
         (prop::sample::select((1..validator_max_count).collect::<Vec<usize>>()))
             .prop_flat_map(|validators| {
@@ -681,8 +681,9 @@ mod message {
 
                 validators.iter().for_each(|validator| {
                     let mut j = Justification::new();
-                    let m = VoteCount::create_vote_msg(
+                    let m = BinaryMsg::new(
                         *validator,
+                        j.clone(),
                         votes[*validator as usize],
                     );
                     j.insert(m.clone());
@@ -749,7 +750,7 @@ mod message {
     proptest! {
         #![proptest_config(Config::with_cases(1))]
         #[test]
-        fn increment_chain_arbitrary_messenger_binary(ref chain in chain_binary(8, arbitrary_in_set, some_receivers, full_consensus_binary)) {
+        fn increment_chain_arbitrary_messenger_binary(ref chain in chain_binary(100, arbitrary_in_set, some_receivers, full_consensus_binary)) {
             // total messages until unilateral consensus
             println!("{} validators -> {:?} message(s)",
                      match chain.last().unwrap_or(&BTreeMap::new()).keys().len().to_string().as_ref()
