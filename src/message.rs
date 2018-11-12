@@ -401,11 +401,14 @@ mod message {
     use std::{f64};
     use super::*;
 
-    fn add_message<'z>(
-        state: &'z mut BTreeMap<u32, SenderState<BlockMsg>>,
-        sender: u32,
-        recipients: HashSet<u32>,
-    ) -> &'z BTreeMap<u32, SenderState<BlockMsg>> {
+    fn add_message<'z, M>(
+        state: &'z mut BTreeMap<M::Sender, SenderState<M>>,
+        sender: M::Sender,
+        recipients: HashSet<M::Sender>,
+    ) -> &'z BTreeMap<M::Sender, SenderState<M>>
+    where
+        M: CasperMsg
+    {
         // println!("{:?} {:?}", sender, recipients);
         let latest_honest_msgs = LatestMsgsHonest::from_latest_msgs(
             &state[&sender].get_latest_msgs(),
@@ -423,12 +426,12 @@ mod message {
         let estimate = latest_honest_msgs.mk_estimate(
             None,
             state[&sender].get_senders_weights(),
-            Some(Block::new(None, sender.clone(), BTreeSet::new())),
+            None,
         );
         // println!("Sender: {:?}", sender);
         // println!("Ghost calc: {:?}", ghost);
         // println!("Justification: {:?}", justification);
-        let m = BlockMsg::new(sender.clone(), justification, estimate);
+        let m = M::new(sender.clone(), justification, estimate);
         // println!("Message added: {:?}\n", m);
         let (_, sender_state) = Justification::from_msgs(
             LatestMsgsHonest::from_latest_msgs(
