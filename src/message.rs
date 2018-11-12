@@ -524,7 +524,10 @@ mod message {
             .boxed()
     }
 
-    fn full_consensus(state: BTreeMap<u32, SenderState<BlockMsg>>) -> bool {
+    fn full_consensus<M>(state: BTreeMap<M::Sender, SenderState<M>>) -> bool
+    where
+        M: CasperMsg
+    {
         let m: HashSet<_> = state
             .iter()
             .map(|(sender, sender_state)| {
@@ -534,7 +537,7 @@ mod message {
                 );
                 latest_honest_msgs.mk_estimate(
                     None,
-                    Some(*sender),
+                    Some(sender.clone()),
                     sender_state.get_senders_weights(),
                     None,
                 )
