@@ -75,6 +75,7 @@ pub trait CasperMsg: Hash + Ord + Clone + Eq + Sync + Send + Debug {
             );
             let estimate = latest_msgs_honest.mk_estimate(
                 finalized_msg,
+                Some(sender.clone()),
                 &sender_state.get_senders_weights(),
                 external_data,
             );
@@ -425,6 +426,7 @@ mod message {
         // let ghost = Block::ghost(&latest_honest_msgs, None, state[&sender].get_senders_weights());
         let estimate = latest_honest_msgs.mk_estimate(
             None,
+            Some(sender.clone()),
             state[&sender].get_senders_weights(),
             None,
         );
@@ -522,13 +524,14 @@ mod message {
     fn full_consensus(state: BTreeMap<u32, SenderState<BlockMsg>>) -> bool {
         let m: HashSet<_> = state
             .iter()
-            .map(|(_, sender_state)| {
+            .map(|(sender, sender_state)| {
                 let latest_honest_msgs = LatestMsgsHonest::from_latest_msgs(
                     sender_state.get_latest_msgs(),
                     &HashSet::new(),
                 );
                 latest_honest_msgs.mk_estimate(
                     None,
+                    Some(*sender),
                     sender_state.get_senders_weights(),
                     None,
                 )
