@@ -1,3 +1,4 @@
+use std::time::Instant;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::fmt::{Debug, Formatter, Result as FmtResult};
@@ -598,6 +599,13 @@ mod tests {
         m.len() == 1
     }
 
+    fn never_consensus<M>(_state: &HashMap<M::Sender, SenderState<M>>) -> bool
+    where
+        M: CasperMsg,
+    {
+        false
+    }
+
     fn safety_oracle(state: &HashMap<u32, SenderState<BlockMsg>>) -> bool {
         let safety_oracle_detected: HashSet<bool> = state
             .iter()
@@ -609,7 +617,7 @@ mod tests {
                 let genesis_block = Block::from(ProtoBlock::new(None, 0));
                 let safety_threshold =
                     (sender_state.get_senders_weights().sum_all_weights())
-                        / 2.0;
+                        / 1.01;
                 Block::safety_oracles(
                     genesis_block,
                     &latest_honest_msgs,
@@ -619,7 +627,8 @@ mod tests {
                 ) != HashSet::new()
             })
             .collect();
-        safety_oracle_detected.contains(&true)
+        safety_oracle_detected.contains(&true);
+        false
     }
 
     fn clique_collection(
@@ -727,7 +736,9 @@ mod tests {
                     state.clone()
                 });
                 let mut have_consensus = false;
+                let start = Instant::now();
                 Vec::from_iter(chain.take_while(|state| {
+                    println!("{:?}", start.elapsed());
                     if have_consensus {
                         false
                     } else {
@@ -749,7 +760,7 @@ mod tests {
     proptest! {
         #![proptest_config(Config::with_cases(100))]
         #[test]
-        fn blockchain(ref chain in chain(arbitrary_blockchain(), 6, round_robin, all_receivers, safety_oracle)) {
+        fn blockchain(ref chain in chain(arbitrary_blockchain(), 15, round_robin, all_receivers, safety_oracle)) {
             // total messages until unilateral consensus
             println!("new chain");
             chain.iter().for_each(|state| {println!("{{lms: {:?},", state.iter().map(|(_, sender_state)|
@@ -774,7 +785,7 @@ mod tests {
     proptest! {
         #![proptest_config(Config::with_cases(30))]
         #[test]
-        fn round_robin_binary(ref chain in chain(prop::bool::ANY.boxed(), 15, round_robin, all_receivers, full_consensus)) {
+        fn round_robin_binary(ref chain in chain(prop::bool::ANY.boxed(), 15, round_robin, all_receivers, never_consensus)) {
             assert!(chain.last().unwrap_or(&HashMap::new()).keys().len() >=
                     chain.len(),
                     "round robin with n validators should converge in at most n messages")
@@ -784,7 +795,7 @@ mod tests {
     proptest! {
         #![proptest_config(Config::with_cases(10))]
         #[test]
-        fn round_robin_integer(ref chain in chain(prop::num::u32::ANY.boxed(), 2000, round_robin, all_receivers, full_consensus)) {
+        fn round_robin_integer(ref chain in chain(prop::num::u32::ANY.boxed(), 15, round_robin, all_receivers, never_consensus)) {
             // total messages until unilateral consensus
             println!("{} validators -> {:?} message(s)",
                      match chain.last().unwrap_or(&HashMap::new()).keys().len().to_string().as_ref()
@@ -813,7 +824,7 @@ mod tests {
     proptest! {
         #![proptest_config(Config::with_cases(1))]
         #[test]
-        fn arbitrary_messenger_binary(ref chain in chain(prop::bool::ANY.boxed(), 100, arbitrary_in_set, some_receivers, full_consensus)) {
+        fn arbitrary_messenger_binary(ref chain in chain(prop::bool::ANY.boxed(), 1000, arbitrary_in_set, some_receivers, full_consensus)) {
             // total messages until unilateral consensus
             println!("{} validators -> {:?} message(s)",
                      match chain.last().unwrap_or(&HashMap::new()).keys().len().to_string().as_ref()
