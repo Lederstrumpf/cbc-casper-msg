@@ -495,11 +495,11 @@ mod tests {
     use std::{f64};
     use super::*;
 
-    fn add_message<'z, M>(
-        state: &'z mut HashMap<M::Sender, SenderState<M>>,
+    fn add_message<M>(
+        mut state: HashMap<M::Sender, SenderState<M>>,
         sender: M::Sender,
         recipients: HashSet<M::Sender>,
-    ) -> &'z HashMap<M::Sender, SenderState<M>>
+    ) -> HashMap<M::Sender, SenderState<M>>
     where
         M: CasperMsg,
     {
@@ -567,11 +567,11 @@ mod tests {
         M: CasperMsg,
     {
         (sender_strategy, receiver_strategy, Just(state))
-            .prop_map(|(sender, mut receivers, mut state)| {
+            .prop_map(|(sender, mut receivers, state)| {
                 if !receivers.contains(&sender) {
                     receivers.insert(sender.clone());
                 }
-                add_message(&mut state, sender, receivers).clone()
+                add_message(state, sender, receivers)
             })
             .boxed()
     }
@@ -722,32 +722,21 @@ mod tests {
 
                 let mut runner = TestRunner::default();
                 let mut senders = validators.clone();
-                let chain = iter::repeat_with(|| {
+                let start = Instant::now();
+                while !consensus_satisfied(&state) {
+                    println!("{:?}", start.elapsed());
                     let sender_strategy =
                         message_producer_strategy(&mut senders);
                     let receiver_strategy = message_receiver_strategy(&senders);
                     state = message_event(
-                        state.clone(),
+                        state,
                         sender_strategy,
                         receiver_strategy,
                     ).new_value(&mut runner)
                         .unwrap()
                         .current();
-                    state.clone()
-                });
-                let mut have_consensus = false;
-                let start = Instant::now();
-                Vec::from_iter(chain.take_while(|state| {
-                    println!("{:?}", start.elapsed());
-                    if have_consensus {
-                        false
-                    } else {
-                        if consensus_satisfied(state) {
-                            have_consensus = true
-                        }
-                        true
-                    }
-                }))
+                };
+                vec![state]
             })
             .boxed()
     }
