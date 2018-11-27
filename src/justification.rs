@@ -27,7 +27,7 @@ impl<M: CasperMsg> Justification<M> {
     /// and a SenderState
     pub fn from_msgs(
         msgs: Vec<M>,
-        sender_state: &SenderState<M>,
+        sender_state: &mut SenderState<M>,
     ) -> (Self, SenderState<M>) {
         let mut j = Justification::new();
         let msgs: HashSet<_> = msgs.iter().collect();
@@ -91,15 +91,15 @@ impl<M: CasperMsg> Justification<M> {
     pub fn faulty_inserts(
         &mut self,
         msgs: HashSet<&M>,
-        sender_state: &SenderState<M>,
+        sender_state: &mut SenderState<M>,
     ) -> (bool, SenderState<M>) {
         // let msgs = sender_state.sort_by_faultweight(msgs);
         // do the actual insertions to the state
         msgs.iter().fold(
             (false, sender_state.clone()),
-            |(success, sender_state), &msg| {
+            |(success, mut sender_state), &msg| {
                 let (success_prime, sender_state_prime) =
-                    self.faulty_insert(msg, &sender_state);
+                    self.faulty_insert(msg, &mut sender_state);
                 (success || success_prime, sender_state_prime)
             },
         )
@@ -111,7 +111,7 @@ impl<M: CasperMsg> Justification<M> {
     pub fn faulty_insert(
         &mut self,
         msg: &M,
-        sender_state: &SenderState<M>,
+        sender_state: &mut SenderState<M>,
     ) -> (bool, SenderState<M>) {
         let mut sender_state = sender_state.clone();
         let is_equivocation = sender_state.latest_msgs.equivocate(msg);

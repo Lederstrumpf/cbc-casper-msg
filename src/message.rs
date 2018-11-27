@@ -61,7 +61,7 @@ pub trait CasperMsg: Hash + Clone + Eq + Sync + Send + Debug + Id + serde::Seria
         sender: Self::Sender,
         new_msgs: Vec<&Self>,
         finalized_msg: Option<&Self>,
-        sender_state: &SenderState<Self>,
+        sender_state: &mut SenderState<Self>,
         external_data: Option<<<Self as CasperMsg>::Estimate as Data>::Data>,
     ) -> Result<(Self, SenderState<Self>), &'static str> {
         // // TODO eventually comment out these lines, and FIXME tests
@@ -85,7 +85,7 @@ pub trait CasperMsg: Hash + Clone + Eq + Sync + Send + Debug + Id + serde::Seria
 
         // tries to insert new messages in the justification
         let (success, sender_state) =
-            justification.faulty_inserts(new_msgs, &sender_state);
+            justification.faulty_inserts(new_msgs, sender_state);
 
         if !success {
             Err("None of the messages could be added to the state!")
@@ -507,9 +507,9 @@ mod tests {
             &state[&sender].get_latest_msgs(),
             &HashSet::new(),
         );
-        let (justification, sender_state) = Justification::from_msgs(
+        let (justification, mut sender_state) = Justification::from_msgs(
             latest_honest_msgs.iter().cloned().collect(),
-            &state[&sender],
+            state.get_mut(&sender).unwrap(),
         );
         let estimate = latest_honest_msgs.mk_estimate(
             None,
@@ -525,12 +525,12 @@ mod tests {
             ).iter()
                 .cloned()
                 .collect(),
-            &sender_state,
+            &mut sender_state,
         );
         state.insert(sender, sender_state);
         recipients.iter().for_each(|recipient| {
             let (_, recipient_state) =
-                Justification::from_msgs(vec![m.clone()], &state[recipient]);
+                Justification::from_msgs(vec![m.clone()], state.get_mut(recipient).unwrap());
             state.insert(recipient.clone(), recipient_state);
         });
         state
