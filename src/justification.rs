@@ -98,9 +98,9 @@ impl<M: CasperMsg> Justification<M> {
         msgs.iter().fold(
             (false, sender_state.clone()),
             |(success, mut sender_state), &msg| {
-                let (success_prime, sender_state_prime) =
+                let success_prime =
                     self.faulty_insert(msg, &mut sender_state);
-                (success || success_prime, sender_state_prime)
+                (success || success_prime, sender_state)
             },
         )
     }
@@ -112,8 +112,7 @@ impl<M: CasperMsg> Justification<M> {
         &mut self,
         msg: &M,
         sender_state: &mut SenderState<M>,
-    ) -> (bool, SenderState<M>) {
-        let mut sender_state = sender_state.clone();
+    ) -> bool {
         let is_equivocation = sender_state.latest_msgs.equivocate(msg);
 
         let sender = msg.get_sender();
@@ -134,7 +133,7 @@ impl<M: CasperMsg> Justification<M> {
                 if success {
                     sender_state.latest_msgs.update(msg);
                 }
-                (success, sender_state)
+                success
             },
             // in the other case, we have to check that the threshold is not 
             // reached
@@ -149,9 +148,9 @@ impl<M: CasperMsg> Justification<M> {
                             sender_state.state_fault_weight += sender_weight;
                         }
                     }
-                    (success, sender_state)
+                    success
                 } else {
-                    (false, sender_state)
+                    false
                 }
             },
         }
