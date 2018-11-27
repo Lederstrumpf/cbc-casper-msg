@@ -163,77 +163,77 @@ impl Estimate for VoteCount {
     }
 }
 
-#[cfg(tests)]
-mod count_votes {
+// #[cfg(tests)]
+// mod count_votes {
 
-    use std::collections::HashSet;
+//     use std::collections::HashSet;
 
-    use super::*;
-    use message::{CasperMsg, Message};
-    use justification::{Justification, LatestMsgs};
+//     use super::*;
+//     use message::{CasperMsg, Message};
+//     use justification::{Justification, LatestMsgs};
 
-    #[test]
-    fn count_votes() {
-        use justification::{SenderState};
-        use senders_weight::{SendersWeight};
+//     #[test]
+//     fn count_votes() {
+//         use justification::{SenderState};
+//         use senders_weight::{SendersWeight};
 
-        let senders_weights = SendersWeight::new(
-            [(0, 1.0), (1, 1.0), (2, 1.0)].iter().cloned().collect(),
-        );
+//         let senders_weights = SendersWeight::new(
+//             [(0, 1.0), (1, 1.0), (2, 1.0)].iter().cloned().collect(),
+//         );
 
-        let v0 = &VoteCount::create_vote_msg(0, false);
-        let v0_prime = &VoteCount::create_vote_msg(0, true); // equivocating vote
-        let v1 = &VoteCount::create_vote_msg(1, true);
-        let mut j0 = Justification::new();
+//         let v0 = &VoteCount::create_vote_msg(0, false);
+//         let v0_prime = &VoteCount::create_vote_msg(0, true); // equivocating vote
+//         let v1 = &VoteCount::create_vote_msg(1, true);
+//         let mut j0 = Justification::new();
 
-        let weights = SenderState::new(
-            senders_weights,
-            0.0,
-            None,
-            LatestMsgs::new(),
-            2.0,
-            HashSet::new(),
-        );
+//         let weights = SenderState::new(
+//             senders_weights,
+//             0.0,
+//             None,
+//             LatestMsgs::new(),
+//             2.0,
+//             HashSet::new(),
+//         );
 
-        let (success, _) =
-            j0.faulty_inserts(vec![v0].iter().cloned().collect(), &weights);
-        assert!(success);
+//         let (success, _) =
+//             j0.faulty_inserts(vec![v0].iter().cloned().collect(), &weights);
+//         assert!(success);
 
-        let (m0, _) =
-            &Message::from_msgs(0, vec![v0], None, &weights, None).unwrap();
-        let mut j1 = Justification::new();
-        let (success, _) =
-            j1.faulty_inserts(vec![v1].iter().cloned().collect(), &weights);
-        assert!(success);
+//         let (m0, _) =
+//             &Message::from_msgs(0, vec![v0], None, &weights, None).unwrap();
+//         let mut j1 = Justification::new();
+//         let (success, _) =
+//             j1.faulty_inserts(vec![v1].iter().cloned().collect(), &weights);
+//         assert!(success);
 
-        let (success, _) =
-            j1.faulty_inserts(vec![m0].iter().cloned().collect(), &weights);
-        assert!(success);
+//         let (success, _) =
+//             j1.faulty_inserts(vec![m0].iter().cloned().collect(), &weights);
+//         assert!(success);
 
-        let (m1, _) =
-            &Message::from_msgs(1, vec![v1, m0], None, &weights, None).unwrap();
-        assert_eq!(
-            Message::get_estimate(m1).clone(),
-            VoteCount { yes: 1, no: 1 },
-            "should have 1 yes, and 1 no vote, found {:?}",
-            Message::get_estimate(m1).clone(),
-        );
+//         let (m1, _) =
+//             &Message::from_msgs(1, vec![v1, m0], None, &weights, None).unwrap();
+//         assert_eq!(
+//             Message::get_estimate(m1).clone(),
+//             VoteCount { yes: 1, no: 1 },
+//             "should have 1 yes, and 1 no vote, found {:?}",
+//             Message::get_estimate(m1).clone(),
+//         );
 
-        let (success, _) = j1
-            .faulty_inserts(vec![v0_prime].iter().cloned().collect(), &weights);
-        assert!(success);
+//         let (success, _) = j1
+//             .faulty_inserts(vec![v0_prime].iter().cloned().collect(), &weights);
+//         assert!(success);
 
-        let (m1_prime, _) = &Message::from_msgs(
-            1,
-            vec![v1, m0, v0_prime].iter().cloned().collect(),
-            None,
-            &weights,
-            None,
-        ).unwrap();
-        assert_eq!(
-            Message::get_estimate(m1_prime).clone(),
-            VoteCount { yes: 1, no: 0 },
-            "should have 1 yes, and 0 no vote, found {:?}, the equivocation vote should cancels out the normal vote",
-            Message::get_estimate(&m1_prime).clone())
-    }
-}
+//         let (m1_prime, _) = &Message::from_msgs(
+//             1,
+//             vec![v1, m0, v0_prime].iter().cloned().collect(),
+//             None,
+//             &weights,
+//             None,
+//         ).unwrap();
+//         assert_eq!(
+//             Message::get_estimate(m1_prime).clone(),
+//             VoteCount { yes: 1, no: 0 },
+//             "should have 1 yes, and 0 no vote, found {:?}, the equivocation vote should cancels out the normal vote",
+//             Message::get_estimate(&m1_prime).clone())
+//     }
+// }
