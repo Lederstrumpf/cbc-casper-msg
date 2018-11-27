@@ -93,7 +93,7 @@ impl<M: CasperMsg> Justification<M> {
         msgs: HashSet<&M>,
         sender_state: &SenderState<M>,
     ) -> (bool, SenderState<M>) {
-        let msgs = sender_state.sort_by_faultweight(msgs);
+        // let msgs = sender_state.sort_by_faultweight(msgs);
         // do the actual insertions to the state
         msgs.iter().fold(
             (false, sender_state.clone()),
