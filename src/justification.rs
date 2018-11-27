@@ -114,47 +114,10 @@ impl<M: CasperMsg> Justification<M> {
         sender_state: &mut SenderState<M>,
     ) -> bool {
         // let is_equivocation = sender_state.latest_msgs.equivocate(msg);
-        let is_equivocation = false;
-
         let sender = msg.get_sender();
-        let sender_weight = sender_state
-            .senders_weights
-            .get_weight(sender)
-            .unwrap_or(::std::f64::INFINITY);
-
-        let already_in_equivocators =
-            sender_state.equivocators.contains(sender);
-
-        match (is_equivocation, already_in_equivocators) {
-            // if it's already equivocating and listed as such, 
-            // or not equivocating at all, an insertion can be
-            // done without more checks
-            (false, _) | (true, true) => {
-                let success = self.insert(msg.clone());
-                if success {
-                    sender_state.latest_msgs.update(msg);
-                }
-                success
-            },
-            // in the other case, we have to check that the threshold is not 
-            // reached
-            (true, false) => {
-                if sender_weight + sender_state.state_fault_weight
-                    <= sender_state.thr
-                {
-                    let success = self.insert(msg.clone());
-                    if success {
-                        sender_state.latest_msgs.update(msg);
-                        if sender_state.equivocators.insert(sender.clone()) {
-                            sender_state.state_fault_weight += sender_weight;
-                        }
-                    }
-                    success
-                } else {
-                    false
-                }
-            },
-        }
+        self.insert(msg.clone());
+        sender_state.latest_msgs.update(msg);
+        true
     }
 
     /// this function sets the weight of the equivocator to zero right away
