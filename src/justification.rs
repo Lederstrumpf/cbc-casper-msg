@@ -111,7 +111,6 @@ impl<M: CasperMsg> Justification<M> {
         sender_state: &mut SenderState<M>,
     ) -> bool {
         // let is_equivocation = sender_state.latest_msgs.equivocate(msg);
-        let sender = msg.get_sender();
         self.insert(msg.clone());
         sender_state.latest_msgs.update(msg);
         true

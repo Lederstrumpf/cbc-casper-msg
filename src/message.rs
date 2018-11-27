@@ -530,7 +530,7 @@ mod tests {
         // state.insert(sender, sender_state);
         recipients.iter().for_each(|recipient| {
             // let (_, recipient_state) =
-                Justification::from_msgs(vec![m.clone()], state.get_mut(recipient).unwrap());
+            Justification::from_msgs(vec![m.clone()], state.get_mut(recipient).unwrap());
             // state.insert(recipient.clone(), recipient_state);
         });
         state
