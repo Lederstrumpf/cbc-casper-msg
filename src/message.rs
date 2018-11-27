@@ -676,7 +676,8 @@ mod tests {
         G: Fn(&Vec<u32>) -> BoxedStrategy<HashSet<u32>>,
         H: Fn(&HashMap<u32, SenderState<Message<E, u32>>>) -> bool,
     {
-        (prop::sample::select((1..validator_max_count).collect::<Vec<usize>>()))
+        // (prop::sample::select((1..validator_max_count).collect::<Vec<usize>>()))
+        (Just(validator_max_count))
             .prop_flat_map(move |validators| {
                 (prop::collection::vec(
                     consensus_value_strategy.clone(),
@@ -749,7 +750,7 @@ mod tests {
     proptest! {
         #![proptest_config(Config::with_cases(100))]
         #[test]
-        fn blockchain(ref chain in chain(arbitrary_blockchain(), 15, round_robin, all_receivers, safety_oracle)) {
+        fn blockchain(ref chain in chain(arbitrary_blockchain(), 15, round_robin, all_receivers, never_consensus)) {
             // total messages until unilateral consensus
             println!("new chain");
             chain.iter().for_each(|state| {println!("{{lms: {:?},", state.iter().map(|(_, sender_state)|

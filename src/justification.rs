@@ -93,7 +93,7 @@ impl<M: CasperMsg> Justification<M> {
         msgs: HashSet<&M>,
         sender_state: &SenderState<M>,
     ) -> (bool, SenderState<M>) {
-        let msgs = sender_state.sort_by_faultweight(msgs);
+        // let msgs = sender_state.sort_by_faultweight(msgs);
         // do the actual insertions to the state
         msgs.iter().fold(
             (false, sender_state.clone()),
@@ -114,47 +114,10 @@ impl<M: CasperMsg> Justification<M> {
         sender_state: &SenderState<M>,
     ) -> (bool, SenderState<M>) {
         let mut sender_state = sender_state.clone();
-        let is_equivocation = sender_state.latest_msgs.equivocate(msg);
-
-        let sender = msg.get_sender();
-        let sender_weight = sender_state
-            .senders_weights
-            .get_weight(sender)
-            .unwrap_or(::std::f64::INFINITY);
-
-        let already_in_equivocators =
-            sender_state.equivocators.contains(sender);
-
-        match (is_equivocation, already_in_equivocators) {
-            // if it's already equivocating and listed as such, 
-            // or not equivocating at all, an insertion can be
-            // done without more checks
-            (false, _) | (true, true) => {
-                let success = self.insert(msg.clone());
-                if success {
-                    sender_state.latest_msgs.update(msg);
-                }
-                (success, sender_state)
-            },
-            // in the other case, we have to check that the threshold is not 
-            // reached
-            (true, false) => {
-                if sender_weight + sender_state.state_fault_weight
-                    <= sender_state.thr
-                {
-                    let success = self.insert(msg.clone());
-                    if success {
-                        sender_state.latest_msgs.update(msg);
-                        if sender_state.equivocators.insert(sender.clone()) {
-                            sender_state.state_fault_weight += sender_weight;
-                        }
-                    }
-                    (success, sender_state)
-                } else {
-                    (false, sender_state)
-                }
-            },
-        }
+        // let is_equivocation = sender_state.latest_msgs.equivocate(msg);
+        self.insert(msg.clone());
+        sender_state.latest_msgs.update(msg);
+        (true, sender_state)
     }
 
     /// this function sets the weight of the equivocator to zero right away
@@ -287,13 +250,8 @@ impl<M: CasperMsg> LatestMsgsHonest<M> {
     ) -> Self {
         latest_msgs
             .iter()
-            .filter_map(|(sender, msgs)| {
-                if equivocators.contains(sender) || msgs.len() != 1 {
-                    None
-                }
-                else {
-                    msgs.iter().next()
-                }
+            .filter_map(|(_sender, msgs)| {
+                msgs.iter().next()
             })
             .fold(LatestMsgsHonest::new(), |mut acc, msg| {
                 acc.insert(msg.clone());
@@ -384,6 +342,7 @@ impl<M: CasperMsg> LatestMsgs<M> {
         if let Some(latest_msgs_from_sender) = self.get(sender).cloned() {
             latest_msgs_from_sender
                 .iter()
+                .filter(|&old_msg| new_msg != old_msg)
                 .fold(false, |acc, old_msg| {
                     let new_independent_from_old = !new_msg.depends(old_msg);
                     // equivocation, old and new do not depend on each other
