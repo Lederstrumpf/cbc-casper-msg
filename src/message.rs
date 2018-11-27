@@ -676,7 +676,8 @@ mod tests {
         G: Fn(&Vec<u32>) -> BoxedStrategy<HashSet<u32>>,
         H: Fn(&HashMap<u32, SenderState<Message<E, u32>>>) -> bool,
     {
-        (prop::sample::select((1..validator_max_count).collect::<Vec<usize>>()))
+        // (prop::sample::select((1..validator_max_count).collect::<Vec<usize>>()))
+        (Just(validator_max_count))
             .prop_flat_map(move |validators| {
                 (prop::collection::vec(
                     consensus_value_strategy.clone(),
