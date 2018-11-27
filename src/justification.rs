@@ -113,7 +113,8 @@ impl<M: CasperMsg> Justification<M> {
         msg: &M,
         sender_state: &mut SenderState<M>,
     ) -> bool {
-        let is_equivocation = sender_state.latest_msgs.equivocate(msg);
+        // let is_equivocation = sender_state.latest_msgs.equivocate(msg);
+        let is_equivocation = false;
 
         let sender = msg.get_sender();
         let sender_weight = sender_state
