@@ -63,7 +63,7 @@ pub trait CasperMsg: Hash + Clone + Eq + Sync + Send + Debug + Id + serde::Seria
         finalized_msg: Option<&Self>,
         sender_state: &mut SenderState<Self>,
         external_data: Option<<<Self as CasperMsg>::Estimate as Data>::Data>,
-    ) -> Result<(Self, SenderState<Self>), &'static str> {
+    ) -> Result<Self, &'static str> {
         // // TODO eventually comment out these lines, and FIXME tests
         // // check whether two messages from same sender
         // let mut senders = HashSet::new();
@@ -84,7 +84,7 @@ pub trait CasperMsg: Hash + Clone + Eq + Sync + Send + Debug + Id + serde::Seria
         );
 
         // tries to insert new messages in the justification
-        let (success, sender_state) =
+        let success =
             justification.faulty_inserts(new_msgs, sender_state);
 
         if !success {
@@ -103,7 +103,7 @@ pub trait CasperMsg: Hash + Clone + Eq + Sync + Send + Debug + Id + serde::Seria
             );
 
             let message = Self::new(sender, justification, estimate, None);
-            Ok((message, sender_state))
+            Ok(message)
         }
     }
 
@@ -507,7 +507,7 @@ mod tests {
             &state[&sender].get_latest_msgs(),
             &HashSet::new(),
         );
-        let (justification, mut sender_state) = Justification::from_msgs(
+        let justification = Justification::from_msgs(
             latest_honest_msgs.iter().cloned().collect(),
             state.get_mut(&sender).unwrap(),
         );
@@ -518,20 +518,20 @@ mod tests {
             None,
         );
         let m = M::new(sender.clone(), justification, estimate, None);
-        let (_, sender_state) = Justification::from_msgs(
+        let _ = Justification::from_msgs(
             LatestMsgsHonest::from_latest_msgs(
-                sender_state.get_latest_msgs(),
+                state[&sender].get_latest_msgs(),
                 &HashSet::new(),
             ).iter()
                 .cloned()
                 .collect(),
-            &mut sender_state,
+            state.get_mut(&sender).unwrap(),
         );
-        state.insert(sender, sender_state);
+        // state.insert(sender, sender_state);
         recipients.iter().for_each(|recipient| {
-            let (_, recipient_state) =
+            // let (_, recipient_state) =
                 Justification::from_msgs(vec![m.clone()], state.get_mut(recipient).unwrap());
-            state.insert(recipient.clone(), recipient_state);
+            // state.insert(recipient.clone(), recipient_state);
         });
         state
     }

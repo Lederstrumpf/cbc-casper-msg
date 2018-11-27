@@ -28,11 +28,11 @@ impl<M: CasperMsg> Justification<M> {
     pub fn from_msgs(
         msgs: Vec<M>,
         sender_state: &mut SenderState<M>,
-    ) -> (Self, SenderState<M>) {
+    ) -> Self {
         let mut j = Justification::new();
         let msgs: HashSet<_> = msgs.iter().collect();
-        let (_, sender_state) = j.faulty_inserts(msgs, sender_state);
-        (j, sender_state)
+        let _ = j.faulty_inserts(msgs, sender_state);
+        j
     }
 
     pub fn iter(&self) -> std::slice::Iter<M> {
@@ -92,17 +92,14 @@ impl<M: CasperMsg> Justification<M> {
         &mut self,
         msgs: HashSet<&M>,
         sender_state: &mut SenderState<M>,
-    ) -> (bool, SenderState<M>) {
+    ) -> bool {
         // let msgs = sender_state.sort_by_faultweight(msgs);
         // do the actual insertions to the state
-        msgs.iter().fold(
-            (false, sender_state.clone()),
-            |(success, mut sender_state), &msg| {
-                let success_prime =
-                    self.faulty_insert(msg, &mut sender_state);
-                (success || success_prime, sender_state)
-            },
-        )
+        let mut msgs = msgs.clone();
+        for msg in msgs.drain() {
+            self.faulty_insert(msg, sender_state);
+        }
+        true
     }
 
     /// this function makes no assumption on how to treat the equivocator. it
