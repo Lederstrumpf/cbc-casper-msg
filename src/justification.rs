@@ -246,17 +246,12 @@ impl<M: CasperMsg> LatestMsgsHonest<M> {
     /// Filters the latest messages 
     pub fn from_latest_msgs(
         latest_msgs: &LatestMsgs<M>,
-        equivocators: &HashSet<M::Sender>,
+        _equivocators: &HashSet<M::Sender>,
     ) -> Self {
         latest_msgs
             .iter()
-            .filter_map(|(sender, msgs)| {
-                if equivocators.contains(sender) || msgs.len() != 1 {
-                    None
-                }
-                else {
-                    msgs.iter().next()
-                }
+            .filter_map(|(_sender, msgs)| {
+                msgs.iter().next()
             })
             .fold(LatestMsgsHonest::new(), |mut acc, msg| {
                 acc.insert(msg.clone());
